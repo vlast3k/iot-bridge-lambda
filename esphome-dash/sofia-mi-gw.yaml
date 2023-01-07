@@ -36,6 +36,9 @@ esp32_ble_tracker:
 
 xiaomi_ble:
 
+
+script:
+
 # A4:C1:38:28:AB:2C
 # A4:C1:38:04:19:14
 # A4:C1:38:88:2E:08
