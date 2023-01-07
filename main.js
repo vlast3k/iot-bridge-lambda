@@ -3,10 +3,20 @@ const ewelink = require('ewelink-api');
 const bbt = require('beebotte');
 const fetch = require("node-fetch")
 const fs = require('fs');
+const { getHeapStatistics } = require('v8');
 
 var secrets = JSON.parse(fs.readFileSync("secrets.json"))
 
-var devices = {
+var mitemp_template = {
+    type: "esphome",
+    fields: {
+        temp: {bbtype:"temperature"},
+        humidity:  {bbtype:"humidity"},
+        voltage: {bbtype: "number"}
+
+    }
+};
+var devices_Boikovec = {
     sofia_parno_detska : {
         id: "bf8218f2c5a50bbd9adwlv", 
         type: "tuya",
@@ -21,6 +31,13 @@ var devices = {
         fields: {
             temp:    { field: "temp_current", bbtype: "temperature", tuyafactor: 10},
             battery: { field: "battery_percentage", bbtype: "percentage", tuyafactor: 1},
+        }
+    },
+    boikovec_hol_th16: {
+        id: "10000dc3b6",
+        type: "sonoff_ths",
+        fields: {
+            temp: { bbtype: "temperature" }
         }
     },
     boikovec_bungalo_th16: {
@@ -44,15 +61,41 @@ var devices = {
         fields: {
             temp: {bbtype:"temperature"}
         }
+    },
+    boikovec_si7021_1: {
+        type: "esphome",
+        fields: {
+            temp: {bbtype:"temperature"},
+            hum:  {bbtype:"humidity"}
+        }
+    }    ,
+    boikovec_si7021_2: {
+        type: "esphome",
+        fields: {
+            temp: {bbtype:"temperature"},
+            hum:  {bbtype:"humidity"}
+        }
     }
+}
+
+var devices_Sofia = {
+    mitemp_28AB2C: mitemp_template,
+    mitemp_041914: mitemp_template,
+    mitemp_882E08: mitemp_template,
+    mitemp_6E758F: mitemp_template,
+    mitemp_632C7A: mitemp_template
+
 }
 
 
 var vendorHandlers = {
     "tuya" : tuyaGetDeviceField,
     "sonoff_ths": ewelinkGetDeviceField,
-    "adax": adaxGetTemperature
+    "adax": adaxGetTemperature,
+    "esphome": esphomeVoid
 }
+
+
  
 var bclient = new bbt.Connector({token: secrets.bbt.iam_token});
 
@@ -62,11 +105,6 @@ const tuya = new ttt.TuyaContext({
   secretKey: secrets.tuya.secretKey,
 });
 
-const ewelink1 = new ewelink({
-    email: secrets.ewelink.email,
-    password: secrets.ewelink.password,
-    region: 'us',
-  });
 
 
 async function publishAllData(channel) {
@@ -78,7 +116,7 @@ async function publishAllData(channel) {
             var field = af[j];
             console.log("--------- Processing: " + resourceName(name, field));
             await beebotteEnsureResourceExist(channel, resourceName(name, field), devices[name].fields[field].bbtype)
-            await publishToBeebotte(channel, name, field)
+            await publish(channel, name, field)
             
         }
     }
@@ -95,7 +133,7 @@ async function beebotteEnsureResourceExist(channel, resource_name, bbtype) {
     })
 }
 
-async function publishToBeebotte(channel, sensor_name, field_name) {
+async function publish(channel, sensor_name, field_name) {
     var value;
     try {
         value = await vendorHandlers[devices[sensor_name].type](sensor_name, field_name)
@@ -104,8 +142,38 @@ async function publishToBeebotte(channel, sensor_name, field_name) {
         console.log(e)
         return;
     }
+    await publishToBeebotte(channel, sensor_name, field_name, value)
+    await publishToInflux(channel, sensor_name, field_name, value)
+}
 
-    var p = new Promise(resolve => {
+async function publishToInflux(channel, sensor_name, field_name, value) {
+
+/*
+  curl --request POST \
+"https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s" \
+  --header "Authorization: Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ==" \
+  --header "Content-Type: text/plain; charset=utf-8" \
+  --header "Accept: application/json" \
+  --data-binary '
+    airSensors,sensor_id=TLM0201,loc=bb temperature=73.97038159354763,humidity=35.23103248356096,co=0.48445310567793615
+    airSensors,sensor_id=TLM0202,loc=xx temperature=75.30007505999716,humidity=35.651929918691714,co=0.5141876544505826
+    '
+
+*/    
+    var response = await fetch('https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s', 
+      { method: "POST",
+        headers: {
+            "Authorization": "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ==",
+            "Content-Type" : "text/plain; charset=utf-8" ,
+            "Accept"       : "application/json"
+        },
+        body: `${channel},sensor=${sensor_name} ${field_name}=${value}`
+    })
+    console.log("response.ok=" + response.ok + ", data=" + await response.text())
+}
+
+async function publishToBeebotte(channel, sensor_name, field_name, value) {
+        var p = new Promise(resolve => {
         bclient.write(
             {channel: channel, resource: resourceName(sensor_name, field_name), data: value},
             function(err, res) {
@@ -130,13 +198,29 @@ function handleBeebotteExistCallback(err, res, resource_name) {
 }
 
 async function ewelinkGetDeviceField(device_name, field_name) {
-    var status = await ewelink1.getDevice(devices[device_name].id);
-    console.log(JSON.stringify(status))
-    if (!status.online) return;
-    var result = await ewelink1.getDeviceCurrentTemperature(devices[device_name].id)
-    console.log(JSON.stringify(result))
-    if (result.status == "ok") {
-        return +result.temperature
+    //var devices = await ewelink1.getDevices();
+    for (let i=0; i < 3; i++) {
+        var ewelink1 = new ewelink({
+            email: secrets.ewelink.email,
+            password: secrets.ewelink.password,
+            region: 'us',
+        });
+        
+        console.log("secrets.ewelink.email  secrets.ewelink.password")
+        console.log(secrets.ewelink.email + " " + secrets.ewelink.password)
+        var status = await ewelink1.getDevice(devices[device_name].id);
+        // console.log(JSON.stringify(status))
+        // status = await ewelink1.setDeviceAutoTemperatureState(devices[device_name].id, false)
+        // console.log(JSON.stringify(status))
+        // status = await ewelink1.setDeviceAutoTemperatureState(devices[device_name].id, true)
+        console.log(JSON.stringify(status))
+        // if (status.error == 406 ) continue;
+        // if (!status.online) return;
+        var result = await ewelink1.getDeviceCurrentTemperature(devices[device_name].id)
+        console.log(JSON.stringify(result))
+        if (result.status == "ok") {
+            return +result.temperature
+        }
     }
 }
 
@@ -169,13 +253,18 @@ async function adaxGetTemperature() {
     return content.rooms[0].temperature / 100
 }
 
+async function esphomeVoid() {
+    
+}
 
 function resourceName(sensor_name, field_name) {
     return sensor_name + "_" + field_name;
 }
 
-
-publishAllData("Boikovec")
+// var devices = devices_Boikovec;
+// publishAllData("Boikovec")
+devices = devices_Sofia;
+publishAllData("Sofia")
 
 exports.handler = async (event) => {
     console.log("aaa");
@@ -187,3 +276,19 @@ exports.handler = async (event) => {
     };
     return response;
 };
+
+exports.helloWorld = async (req, res) => {
+    await publishAllData("Boikovec")
+    res.status(200).send("OK")
+    // let message = req.query.message || req.body.message || 'Hello World!';
+    // res.status(200).send(message);
+  };
+  
+  exports.helloPubSub = async (event, context) => {
+    await publishAllData("Boikovec")
+    const message = event.data
+      ? Buffer.from(event.data, 'base64').toString()
+      : 'Hello, World';
+    console.log(message);
+  };
+  
