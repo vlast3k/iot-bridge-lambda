@@ -1,14 +1,22 @@
 esphome:
   name: sofia-mi-gw
+  on_boot:
+    priority: 600
+    then:
+      - esp32_ble_tracker.stop_scan
+      - delay: 7s
+      - esp32_ble_tracker.start_scan
 
 esp32:
   board: esp32dev
   framework:
     type: arduino
+    #version: 2.0.4
+
 
 # Enable logging
 logger:
-  level: VERBOSE
+#  level: VERBOSE
 
 ota:
   password: !secret ota.password 
@@ -31,274 +39,107 @@ esp32_ble_tracker:
  scan_parameters:
    interval: 300ms # try with 300ms if you don't have LAN module
    window: 300ms # try with 300ms if you don't have LAN module
+   duration: 300s
    active: false
-   #continuous: true
-
+   continuous: true
+ on_scan_end:
+    - then:
+      - esp32_ble_tracker.start_scan
+ 
 xiaomi_ble:
 
+interval:
+  - interval: 1min
+    then:
+      - http_request.post:
+          url: !secret bridge_url
+          headers:
+            Authorization: !secret influx_token
+            target_url   : !secret target_url
+            Content-Type : "application/text"
+          body: !lambda |-
+            std::string res;
+            char buf[200];
+            for (auto *obj : App.get_sensors()) {
+              if (obj->is_internal() || std::isnan(obj->get_state())) continue;
+              sprintf(buf, "iot,location=sofia,id=%s value=%f\n", obj->get_object_id().c_str(), obj->get_state());
+              res += buf;
+              //ESP_LOGD("main", "res length = %d", res.length());
+              obj->state = std::numeric_limits<double>::quiet_NaN();
+            }
+            return res.c_str();    
 
-script:
-
-# A4:C1:38:28:AB:2C
-# A4:C1:38:04:19:14
-# A4:C1:38:88:2E:08
-# A4:C1:38:63:2C:7A
 sensor:
   - platform: pvvx_mithermometer
     mac_address: "A4:C1:38:04:19:14"
     temperature:
       id: "mitemp_041914_temp"
-      name: "mitemp_041914_temp"
       filters:
-        throttle: 60s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_041914_temp"
-              payload: 
-                root["data"] = id(mitemp_041914_temp).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          - http_request.post:
-              url: !secret bridge_url
-              headers:
-                Authorization: !secret influx_token
-                target_url   : !secret target_url
-                Content-Type : "application/text"
-              body: !lambda |-
-                char buf[200];
-                sprintf(buf, "iot,location=sofia,id=mitemp_041914_temp value=%f", id(mitemp_041914_temp).state);
-                return buf;
+        throttle_average: 60s
     humidity:
       id: "mitemp_041914_humidity"
-      name: "mitemp_041914_humidity"
       filters:
-        throttle: 1800s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_041914_humidity"
-              payload: 
-                root["data"] = id(mitemp_041914_humidity).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
+        throttle_average: 1800s
     battery_voltage:
       id: "mitemp_041914_voltage"
-      name: "mitemp_041914_voltage"
       filters:
         throttle_average: 3600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_041914_voltage"
-              payload: 
-                root["data"] = id(mitemp_041914_voltage).state;
-                root["write"] = true;  
-                root["ispublic"] = true;     
   - platform: pvvx_mithermometer
     mac_address: "A4:C1:38:88:2E:08"
     temperature:
       id: "mitemp_882E08_temp"
-      name: "mitemp_882E08_temp"
       filters:
-        throttle: 60s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_882E08_temp"
-              payload: 
-                root["data"] = id(mitemp_882E08_temp).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          - http_request.post:
-              url: !secret bridge_url
-              headers:
-                Authorization: !secret influx_token
-                target_url   : !secret target_url
-                Content-Type : "application/text"
-              body: !lambda |-
-                char buf[200];
-                sprintf(buf, "iot,location=sofia,id=mitemp_882E08_temp value=%f", id(mitemp_882E08_temp).state);
-                return buf;                
+        throttle_average: 60s
     humidity:
       id: "mitemp_882E08_humidity"
-      name: "mitemp_882E08_humidity"
       filters:
-        throttle: 1800s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_882E08_humidity"
-              payload: 
-                root["data"] = id(mitemp_882E08_humidity).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
+        throttle_average: 1800s
     battery_voltage:
       id: "mitemp_882E08_voltage"
-      name: "mitemp_882E08_voltage"
       filters:
         throttle_average: 3600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_882E08_voltage"
-              payload: 
-                root["data"] = id(mitemp_882E08_voltage).state;
-                root["write"] = true;  
-                root["ispublic"] = true;     
   - platform: pvvx_mithermometer
     mac_address: "A4:C1:38:28:AB:2C"
     temperature:
       id: "mitemp_28AB2C_temp"
-      name: "mitemp_28AB2C_temp"
       filters:
-        throttle: 60s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_28AB2C_temp"
-              payload: 
-                root["data"] = id(mitemp_28AB2C_temp).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          - http_request.post:
-              url: !secret bridge_url
-              headers:
-                Authorization: !secret influx_token
-                target_url   : !secret target_url
-                Content-Type : "application/text"
-              body: !lambda |-
-                char buf[200];
-                sprintf(buf, "iot,location=sofia,id=mitemp_28AB2C_temp value=%f", id(mitemp_28AB2C_temp).state);
-                return buf;                   
+        throttle_average: 60s
     humidity:
       id: "mitemp_28AB2C_humidity"
-      name: "mitemp_28AB2C_humidity"
       filters:
-        throttle: 1800s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_28AB2C_humidity"
-              payload: 
-                root["data"] = id(mitemp_28AB2C_humidity).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
+        throttle_average: 1800s
     battery_voltage:
       id: "mitemp_28AB2C_voltage"
-      name: "mitemp_28AB2C_voltage"
       filters:
         throttle_average: 3600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_28AB2C_voltage"
-              payload: 
-                root["data"] = id(mitemp_28AB2C_voltage).state;
-                root["write"] = true;  
-                root["ispublic"] = true;                                                     
   - platform: pvvx_mithermometer
     mac_address: "A4:C1:38:63:2C:7A"
     temperature:
       id: "mitemp_632C7A_temp"
-      name: "mitemp_632C7A_temp"
       filters:
-        throttle: 60s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_632C7A_temp"
-              payload: 
-                root["data"] = id(mitemp_632C7A_temp).state;
-                root["write"] = true;  
-                root["ispublic"] = true;  
-          - http_request.post:
-              url: !secret bridge_url
-              headers:
-                Authorization: !secret influx_token
-                target_url   : !secret target_url
-                Content-Type : "application/text"
-              body: !lambda |-
-                char buf[200];
-                sprintf(buf, "iot,location=sofia,id=mitemp_632C7A_temp value=%f", id(mitemp_632C7A_temp).state);
-                return buf;                             
+        throttle_average: 60s
     humidity:
       id: "mitemp_632C7A_humidity"
-      name: "mitemp_632C7A_humidity"
       filters:
-        throttle: 1800s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_632C7A_humidity"
-              payload: 
-                root["data"] = id(mitemp_632C7A_humidity).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
+        throttle_average: 1800s
     battery_voltage:
       id: "mitemp_632C7A_voltage"
-      name: "mitemp_632C7A_voltage"
       filters:
         throttle_average: 3600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_632C7A_voltage"
-              payload: 
-                root["data"] = id(mitemp_632C7A_voltage).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
   - platform: pvvx_mithermometer
     mac_address: "A4:C1:38:6E:75:8F"
     temperature:
       id: "mitemp_6E758F_temp"
-      name: "mitemp_6E758F_temp"
       filters:
         throttle: 60s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_6E758F_temp"
-              payload: 
-                root["data"] = id(mitemp_6E758F_temp).state;
-                root["write"] = true;  
-                root["ispublic"] = true;       
-          - http_request.post:
-              url: !secret bridge_url
-              headers:
-                Authorization: !secret influx_token
-                target_url   : !secret target_url
-                Content-Type : "application/text"
-              body: !lambda |-
-                char buf[200];
-                sprintf(buf, "iot,location=sofia,id=mitemp_6E758F_temp value=%f", id(mitemp_6E758F_temp).state);
-                return buf;                   
     humidity:
       id: "mitemp_6E758F_humidity"
-      name: "mitemp_6E758F_humidity"
       filters:
         throttle: 1800s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_6E758F_humidity"
-              payload: 
-                root["data"] = id(mitemp_6E758F_humidity).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
     battery_voltage:
       id: "mitemp_6E758F_voltage"
-      name: "mitemp_6E758F_voltage"
       filters:
         throttle_average: 3600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Sofia/mitemp_6E758F_voltage"
-              payload: 
-                root["data"] = id(mitemp_6E758F_voltage).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
 
 mqtt:
   broker: mqtt.beebotte.com
