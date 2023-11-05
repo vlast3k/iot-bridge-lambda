@@ -1,12 +1,12 @@
-my_setting: false
+influx:
+  host: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write"
+  #"https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
+  token: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
+  org: iot
+  bucket: iot
 
-flag1: true
-flag2: true
-
-settings1:
-  just_a_string: "I am a string"
-  integer: 12345
-  float: 12.3323
-
-settings2:
-  nope: ["n","o","p","e"]
+sensors:
+  ATC_334433:
+    bucket: sofiarr
+    tags: "room=hol"
+    type: mitemp
