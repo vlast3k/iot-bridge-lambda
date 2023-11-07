@@ -1,24 +1,24 @@
 influx:
   host: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write"
   token: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
-  org: iot
-  bucket: iot
+  org: "iot"
+  bucket: "iot"
   #"https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
 
 sensors:
   ATC_D925CC:
-    bucket: sofiarr
+    bucket: "sofiarr"
     tags: "room=hol"
-    type: mitemp
+    type: "mitemp"
   ATC_75D939:
-    bucket: sofiarr
+    bucket: "sofiarr"
     tags: "room=hol"
-    type: mitemp
+    type: "mitemp"
   ATC_041914:
-    bucket: sofiarr
+    bucket: "sofiarr"
     tags: "room=hol"
-    type: mitemp
+    type: "mitemp"
   ATC_28AB2C:
-    bucket: sofiarr
+    bucket: "sofiarr"
     tags: "room=hol"
-    type: mitemp
+    type: "mitemp"
