@@ -6,7 +6,19 @@ influx:
   bucket: iot
 
 sensors:
-  ATC_334433:
+  ATC_D925CC:
+    bucket: sofiarr
+    tags: "room=hol"
+    type: mitemp
+  ATC_75D939:
+    bucket: sofiarr
+    tags: "room=hol"
+    type: mitemp
+  ATC_041914:
+    bucket: sofiarr
+    tags: "room=hol"
+    type: mitemp
+  ATC_28AB2C:
     bucket: sofiarr
     tags: "room=hol"
     type: mitemp
