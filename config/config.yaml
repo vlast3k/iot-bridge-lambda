@@ -7,18 +7,14 @@ influx:
 
 sensors:
   ATC_D925CC:
-    bucket: "sofiarr"
-    tags: "room=hol"
+    tags: "location=borovo,room=hol"
     type: "mitemp"
   ATC_75D939:
-    bucket: "sofiarr"
-    tags: "room=hol"
+    tags: "location=borovo,room=hladilnik"
     type: "mitemp"
   ATC_041914:
-    bucket: "sofiarr"
-    tags: "room=hol"
+    tags: "location=borovo,room=spalnia"
     type: "mitemp"
   ATC_28AB2C:
-    bucket: "sofiarr"
-    tags: "room=hol"
+    tags: "location=borovo,room=detska"
     type: "mitemp"
