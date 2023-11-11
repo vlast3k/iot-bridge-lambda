@@ -24,3 +24,6 @@ sensors:
   ATC_3F89AC:
     tags: "location=borovo,room=kabinet"
     type: "mitemp"
+  ATC_CB7647:
+    tags: "location=borovo,room=parno_detska"
+    type: "mitemp"
