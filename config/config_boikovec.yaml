@@ -1,0 +1,24 @@
+influx:
+  host: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write"
+  token: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
+  org: "iot"
+  bucket: "iot"
+  #"https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
+
+sensors:
+  ATC_D925CC:
+    tags: "location=boikovec,room=hol"
+    type: "mitemp"
+  ATC_041914:
+    tags: "location=boikovec,room=bungalo"
+    type: "mitemp"
+  ATC_3F89AC:
+    tags: "location=boikovec,room=navun"
+    type: "mitemp"
+  ATC_2C4BCE:
+    tags: "location=boikovec,room=hladilnik_kamera"
+    type: "mitemp"
+  ATC_DE47C1:
+    tags: "location=boikovec,room=hladilnik_vutre"
+    type: "mitemp"  
+
