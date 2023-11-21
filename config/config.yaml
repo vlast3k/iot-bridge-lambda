@@ -12,7 +12,7 @@ sensors:
   ATC_75D939:
     tags: "location=borovo,room=hladilnik"
     type: "mitemp"
-  ATC_041914:
+  ATC_0C0D21:
     tags: "location=borovo,room=spalnia"
     type: "mitemp"
   ATC_28AB2C:
