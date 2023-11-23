@@ -6,7 +6,7 @@ influx:
   #"https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
 
 sensors:
-  ATC_D925CC:
+  ATC_EF51B7:
     tags: "location=borovo,room=hol"
     type: "mitemp"
   ATC_75D939:
@@ -21,7 +21,7 @@ sensors:
   ATC_D0A4F6:
     tags: "location=borovo,room=navun"
     type: "mitemp"
-  ATC_3F89AC:
+  ATC_F89760:
     tags: "location=borovo,room=kabinet"
     type: "mitemp"
   ATC_CB7647:
