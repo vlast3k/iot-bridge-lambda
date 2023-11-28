@@ -21,7 +21,7 @@ sensors:
   ATC_D0A4F6:
     tags: "location=borovo,room=navun"
     type: "mitemp"
-  ATC_F89760:
+  ATC_F8976D:
     tags: "location=borovo,room=kabinet"
     type: "mitemp"
   ATC_CB7647:
