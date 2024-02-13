@@ -1,21 +1,32 @@
 esphome:
   name: boikovec
+  on_boot:
+    priority: 600
+    then:
+      - esp32_ble_tracker.stop_scan
+      - delay: 7s
+      - esp32_ble_tracker.start_scan
 
 esp32:
   board: esp32dev
   framework:
     type: arduino
+    #version: 2.0.4
+
 
 # Enable logging
 logger:
-  level: VERBOSE
+  level: DEBUG
 
 ota:
   password: !secret ota.password 
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  networks:
+    - ssid: !secret wifi_ssid_boi
+      password: !secret wifi_password_boi
+    - ssid: !secret wifi_ssid_sof
+      password: !secret wifi_password_sof
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -31,99 +42,72 @@ esp32_ble_tracker:
  scan_parameters:
    interval: 300ms # try with 300ms if you don't have LAN module
    window: 300ms # try with 300ms if you don't have LAN module
+   duration: 300s
    active: false
-   #continuous: true
-
+   continuous: true
+ on_scan_end:
+    - then:
+      - esp32_ble_tracker.start_scan
+ 
 xiaomi_ble:
+
+interval:
+  - interval: 1min
+    then:
+      - http_request.post:
+          url: !secret bridge_url
+          headers:
+            Authorization: !secret influx_token
+            target_url   : !secret target_url
+            Content-Type : "application/text"
+          body: !lambda |-
+            std::string res;
+            char buf[200];
+            for (auto *obj : App.get_sensors()) {
+              ESP_LOGD("main", "sensor id=%s, name=%s, state %f", obj->get_object_id().c_str(), obj->get_name().c_str(), obj->get_state());
+              if (std::isnan(obj->get_state())) continue;
+              sprintf(buf, "%s%f\n", obj->get_name().c_str(), obj->get_state());
+              res += buf;
+              ESP_LOGD("main", buf);
+              obj->state = std::numeric_limits<double>::quiet_NaN();
+            }
+            return res.c_str();    
 
 sensor:
   - platform: pvvx_mithermometer
     mac_address: "A4:C1:38:2C:4B:CE"
     temperature:
-      id: "mitemp_1_temp"
-      name: "mitemp_1_temp"
+      name: "boikovec,room=hol,type=mi,id=2C4BCE temp="
       filters:
-        throttle: 600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Boikovec/mitemp_1_temp"
-              payload: 
-                root["data"] = id(mitemp_1_temp).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          # - http_request.post:
-          #     url: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
-          #     headers:
-          #       Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
-          #       Content-Type : "text/plain; charset=utf-8"
-          #       Accept       : "application/json"
-          #     body: "iot,location=boikovec,type=mitemp,id=1 temperature=22.2"
-          #     # body: !lambda |-
-          #     #   char buffer [100];
-          #     #   sprintf(buffer, "iot,location=boikovec,type=mitemp,id=1 temperature=%f", id(mitemp_1_temp).state);
-          #     #   return buffer;
-          #     verify_ssl: false                   
-#                return ((std::string) "iot,location=boikovec,type=mitemp,id=1 temperature=" + std::to_string(id(mitemp_1_temp).state));
+        throttle_average: 60s
     humidity:
-      id: "mitemp_1_humidity"
-      name: "mitemp_1_humidity"
+      name: "boikovec,room=hol,type=mi,id=2C4BCE humidity="
       filters:
-        throttle: 1800s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Boikovec/mitemp_1_humidity"
-              payload: 
-                root["data"] = id(mitemp_1_humidity).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          # - http_request.post:
-          #     url: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
-          #     headers:
-          #       Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
-          #       Content-Type : "text/plain; charset=utf-8"
-          #       Accept       : "application/json"
-          #     body: !lambda |-
-          #       char buffer [100];
-          #       sprintf(buffer, "iot,location=boikovec,type=mitemp,id=1 humidity=%f", id(mitemp_1_humidity).state);
-          #       return buffer;              
-          #     verify_ssl: false                   
-#                return ((std::string) "iot,location=boikovec,type=mitemp,id=1 humidity=" + id(mitemp_1_humidity).state.c_str());
-    # battery_level:battery_voltage
-    #   name: "PVVX Battery-Level"
-    battery_level:
-      id: "mitemp_1_battery_level"
-      name: "mitemp_1_battery_level"
+        throttle_average: 1800s
+    battery_voltage:
+      name: "boikovec,room=hol,type=mi,id=2C4BCE voltage="
       filters:
         throttle_average: 3600s
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Boikovec/mitemp_1_voltage"
-              payload: 
-                root["data"] = id(mitemp_1_battery_level).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          # - http_request.post:
-          #     url: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
-          #     headers:
-          #       Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
-          #       Content-Type : "text/plain; charset=utf-8"
-          #       Accept       : "application/json"
-          #     body: !lambda |-
-          #       char buffer [100];
-          #       sprintf(buffer, "iot,location=boikovec,type=mitemp,id=1 battery_level=%f", id(mitemp_1_battery_level).state);
-          #       return buffer;                    
-          #     verify_ssl: false                   
-          #       #return ((std::string) "iot,location=boikovec,type=mitemp,id=1 battery_level=" + id(mitemp_1_battery_level).state.c_str());
-    signal_strength:
-      name: "PVVX Signal"
+  - platform: pvvx_mithermometer 
+    mac_address: "A4:C1:38:DE:47:C1"
+    temperature:
+      name: "boikovec,room=hol,type=mi,id=DE47C1 temp="
+      filters:
+        throttle_average: 60s
+    humidity:
+      name: "boikovec,room=hol,type=mi,id=DE47C1 humidity="
+      filters:
+        throttle_average: 1800s
+    battery_voltage:
+      name: "boikovec,room=hol,type=mi,id=DE47C1 voltage="
+      filters:
+        throttle_average: 3600s
 
 mqtt:
-  broker: mqtt.beebotte.com
+  broker: test.mosquitto.org
   port: 1883
-  username: !secret beebotte_iamtkn
+  #username: vlast3k
+  #password: vlast155
   discovery: false
   topic_prefix: Boikovec_ignore
 

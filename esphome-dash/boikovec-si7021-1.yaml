@@ -14,8 +14,8 @@ ota:
   password: !secret ota.password 
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  ssid: !secret wifi_ssid_boi
+  password: !secret wifi_password_boi
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -30,54 +30,81 @@ http_request:
   useragent: esphome/device
   timeout: 10s
 
+interval:
+  - interval: 1min
+    then:
+      - http_request.post:
+          url: !secret bridge_url
+          headers:
+            Authorization: !secret influx_token
+            target_url   : !secret target_url
+            Content-Type : "application/text"
+          body: !lambda |-
+            std::string res;
+            char buf[200];
+            for (auto *obj : App.get_sensors()) {
+              //ESP_LOGD("main", "sensor id=%s, name=%s, state %f", obj->get_object_id().c_str(), obj->get_name().c_str(), obj->get_state());
+              if (std::isnan(obj->get_state())) continue;
+              sprintf(buf, "%s%f\n", obj->get_name().c_str(), obj->get_state());
+              res += buf;
+              //ESP_LOGD("main", buf);
+              obj->state = std::numeric_limits<double>::quiet_NaN();
+            }
+            return res.c_str(); 
+
 sensor:
   - platform: htu21d
     temperature:
-      id: si7021_1_temp
-      name: si7021_1_hum
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Boikovec/boikovec_si7021_1_temp"
-              payload: 
-                root["data"] = id(si7021_1_temp).state;
-                root["write"] = true;        
-                root["ispublic"] = true;        
-          - http_request.post:
-              url: https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s
-              headers:
-                Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
-                Content-Type : "text/plain; charset=utf-8"
-                Accept       : "application/json"
-              body: !lambda |-
-                return ((std::string) "iot,location=boikovec,type=si7021,id=1 temperature=" + std::to_string(id(si7021_1_temp).state));
-              verify_ssl: false                
+      name: "boikovec,room=hol,type=si7021,id=1 temp="
+      filters:
+        throttle_average: 60s
+      # on_value: 
+      #   then:
+      #     - mqtt.publish_json:
+      #         topic: "Boikovec/boikovec_si7021_1_temp"
+      #         payload: 
+      #           root["data"] = id(si7021_1_temp).state;
+      #           root["write"] = true;        
+      #           root["ispublic"] = true;        
+      #     - http_request.post:
+      #         url: https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s
+      #         headers:
+      #           Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
+      #           Content-Type : "text/plain; charset=utf-8"
+      #           Accept       : "application/json"
+      #         body: !lambda |-
+      #           return ((std::string) "iot,location=boikovec,type=si7021,id=1 temperature=" + std::to_string(id(si7021_1_temp).state));
+      #         verify_ssl: false                
     humidity:
-      id: si7021_1_hum
-      name: si7021_1_hum    
-      on_value: 
-        then:
-          - mqtt.publish_json:
-              topic: "Boikovec/boikovec_si7021_1_hum"
-              payload: 
-                root["data"] = id(si7021_1_hum).state;
-                root["write"] = true;  
-                root["ispublic"] = true;        
-          - http_request.post:
-              url: https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s
-              headers:
-                Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
-                Content-Type : "text/plain; charset=utf-8"
-                Accept       : "application/json"
-              body: !lambda |-
-                return ((std::string) "iot,location=boikovec,type=si7021,id=1 humidity=" + std::to_string(id(si7021_1_hum).state));
-              verify_ssl: false                
-    update_interval: 600s
+      name: "boikovec,room=hol,type=si7021,id=1 humidity="
+      filters:
+        throttle_average: 1800s
+      # id: si7021_1_hum
+      # name: si7021_1_hum    
+      # on_value: 
+      #   then:
+      #     - mqtt.publish_json:
+      #         topic: "Boikovec/boikovec_si7021_1_hum"
+      #         payload: 
+      #           root["data"] = id(si7021_1_hum).state;
+      #           root["write"] = true;  
+      #           root["ispublic"] = true;        
+      #     - http_request.post:
+      #         url: https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s
+      #         headers:
+      #           Authorization: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
+      #           Content-Type : "text/plain; charset=utf-8"
+      #           Accept       : "application/json"
+      #         body: !lambda |-
+      #           return ((std::string) "iot,location=boikovec,type=si7021,id=1 humidity=" + std::to_string(id(si7021_1_hum).state));
+      #         verify_ssl: false                
+    #update_interval: 600s
 
 mqtt:
-  broker: mqtt.beebotte.com
+  broker: test.mosquitto.org
   port: 1883
-  username: !secret beebotte_iamtkn
+  #username: vlast3k
+  #password: vlast155
   discovery: false
-  topic_prefix: Boikovec_ignore1
+  topic_prefix: Boikovec_si1
 

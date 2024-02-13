@@ -16,7 +16,7 @@ esp32:
 
 # Enable logging
 logger:
-#  level: VERBOSE
+  level: DEBUG
 
 ota:
   password: !secret ota.password 
@@ -61,10 +61,11 @@ interval:
             std::string res;
             char buf[200];
             for (auto *obj : App.get_sensors()) {
-              if (obj->is_internal() || std::isnan(obj->get_state())) continue;
+              ESP_LOGD("main", "sensor %s, state %f, %d", obj->get_object_id().c_str(),obj->get_state(),  obj->is_internal() );
+              if (std::isnan(obj->get_state())) continue;
               sprintf(buf, "iot,location=sofia,id=%s value=%f\n", obj->get_object_id().c_str(), obj->get_state());
               res += buf;
-              //ESP_LOGD("main", "res length = %d", res.length());
+              ESP_LOGD("main", buf);
               obj->state = std::numeric_limits<double>::quiet_NaN();
             }
             return res.c_str();    

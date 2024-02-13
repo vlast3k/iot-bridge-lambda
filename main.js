@@ -20,6 +20,7 @@ var devices_Boikovec = {
     sofia_parno_detska : {
         id: "bf8218f2c5a50bbd9adwlv", 
         type: "tuya",
+        influx_line: "sofia,room=detska,type=parno",
         fields: {
             temp:    { field: "temp_current", bbtype: "temperature", tuyafactor: 10},
             battery: { field: "battery_percentage", bbtype: "percentage", tuyafactor: 1},
@@ -28,6 +29,7 @@ var devices_Boikovec = {
     sofia_parno_hol : {
         id: "bfb321eae1c6e8e7e2gjtf",
         type: "tuya",
+        influx_line: "sofia,room=hol,type=parno",
         fields: {
             temp:    { field: "temp_current", bbtype: "temperature", tuyafactor: 10},
             battery: { field: "battery_percentage", bbtype: "percentage", tuyafactor: 1},
@@ -36,6 +38,7 @@ var devices_Boikovec = {
     boikovec_hol_th16: {
         id: "10000dc3b6",
         type: "sonoff_ths",
+        influx_line: "boikovec,room=hol,type=sonoff",
         fields: {
             temp: { bbtype: "temperature" }
         }
@@ -43,6 +46,7 @@ var devices_Boikovec = {
     boikovec_bungalo_th16: {
         id: "1000084c06",
         type: "sonoff_ths",
+        influx_line: "boikovec,room=bungalo,type=sonoff",
         fields: {
             temp: { bbtype: "temperature" }
         }
@@ -50,6 +54,7 @@ var devices_Boikovec = {
     boikovec_outside: {
         id: "bff8944a0009b6c7fdjssl",
         type: "tuya",
+        influx_line: "boikovec,room=outside,type=tuya",
         fields: {
             temp:    { field: "va_temperature", bbtype: "temperature",tuyafactor: 10},
             hum:     { field: "va_humidity", bbtype: "percentage", tuyafactor: 1},
@@ -58,6 +63,7 @@ var devices_Boikovec = {
     }, 
     boikovec_spalnia_adax: {
         type: "adax",
+        influx_line: "boikovec,room=spalnia,type=adax",
         fields: {
             temp: {bbtype:"temperature"}
         }
@@ -115,7 +121,7 @@ async function publishAllData(channel) {
         for (var j=0; j < af.length; j++) {
             var field = af[j];
             console.log("--------- Processing: " + resourceName(name, field));
-            await beebotteEnsureResourceExist(channel, resourceName(name, field), devices[name].fields[field].bbtype)
+            //await beebotteEnsureResourceExist(channel, resourceName(name, field), devices[name].fields[field].bbtype)
             await publish(channel, name, field)
             
         }
@@ -142,8 +148,8 @@ async function publish(channel, sensor_name, field_name) {
         console.log(e)
         return;
     }
-    await publishToBeebotte(channel, sensor_name, field_name, value)
-    await publishToInflux(channel, sensor_name, field_name, value)
+    //await publishToBeebotte(channel, sensor_name, field_name, value)
+    if (devices[sensor_name].influx_line) await publishToInflux(channel, sensor_name, field_name, value)
 }
 
 async function publishToInflux(channel, sensor_name, field_name, value) {
@@ -160,6 +166,7 @@ async function publishToInflux(channel, sensor_name, field_name, value) {
     '
 
 */    
+    console.log(`${devices[sensor_name].influx_line} ${field_name}=${value}`);
     var response = await fetch('https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s', 
       { method: "POST",
         headers: {
@@ -167,7 +174,8 @@ async function publishToInflux(channel, sensor_name, field_name, value) {
             "Content-Type" : "text/plain; charset=utf-8" ,
             "Accept"       : "application/json"
         },
-        body: `${channel},sensor=${sensor_name} ${field_name}=${value}`
+        body: `${devices[sensor_name].influx_line} ${field_name}=${value}`
+        //body: `${channel},sensor=${sensor_name} ${field_name}=${value}`
     })
     console.log("response.ok=" + response.ok + ", data=" + await response.text())
 }
@@ -241,16 +249,23 @@ function getTuyaValue(array, field, tuyafactor) {
 }
 
 async function adaxGetTemperature() {
-    var tokenRequest = await fetch(`https://api-1.adax.no/client-api/auth/token?grant_type=password&username=${secrets.adax.user}&password=${secrets.adax.pass}`, 
-                                    {method: 'POST'});
-    var tokenResponse = await tokenRequest.json();
-    console.log(JSON.stringify(tokenResponse))
-    var contentRequest =await fetch('https://api-1.adax.no/client-api/rest/v1/content/', 
-                        {headers:{"Authorization": "Bearer " + tokenResponse.access_token}})
-    var contentResponse = await contentRequest.text()
-    console.log(contentResponse)
-    var content =JSON.parse(contentResponse)
-    return content.rooms[0].temperature / 100
+    for (let i=0; i < 3; i++) {
+        var tokenRequest = await fetch(`https://api-1.adax.no/client-api/auth/token?grant_type=password&username=${secrets.adax.user}&password=${secrets.adax.pass}`, 
+                                        {method: 'POST'});
+        var tokenResponse = await tokenRequest.json();
+        console.log(JSON.stringify(tokenResponse))
+        var response =await fetch('https://api-1.adax.no/client-api/rest/v1/content/', 
+                            {headers:{"Authorization": "Bearer " + tokenResponse.access_token}})
+        if (!response.ok) {
+            console.log("status: " + response.status + ", text: " + response.statusText)
+        } else {
+            var contentResponse = await response.text()
+            console.log(contentResponse)
+        
+            var content =JSON.parse(contentResponse)
+            return content.rooms[0].temperature / 100
+        }
+    }
 }
 
 async function esphomeVoid() {
@@ -261,10 +276,10 @@ function resourceName(sensor_name, field_name) {
     return sensor_name + "_" + field_name;
 }
 
-// var devices = devices_Boikovec;
-// publishAllData("Boikovec")
-devices = devices_Sofia;
-publishAllData("Sofia")
+var devices = devices_Boikovec;
+publishAllData("Boikovec")
+//devices = devices_Sofia;
+//publishAllData("Sofia")
 
 exports.handler = async (event) => {
     console.log("aaa");
