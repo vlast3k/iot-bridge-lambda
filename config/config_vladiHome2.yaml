@@ -1,0 +1,29 @@
+influx:
+  host: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write"
+  token: "Token b1B2mmbWp9wnaLJsFOiXna_IeS8PdanJq1MClHZoTOSWmzg8SyiZSkq6Rwx4tCNPcLezg74OJd8BXajwWnfiqQ=="
+  org: "iot"
+  bucket: "iot"
+  #"https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/write?org=iot&bucket=iot&precision=s"
+
+sensors:
+  ATC_EF51B7:
+    tags: "location=borovo,room=hol"
+    type: "mitemp"
+  ATC_75D939:
+    tags: "location=borovo,room=hladilnik"
+    type: "mitemp"
+  ATC_0C0D21:
+    tags: "location=borovo,room=spalnia"
+    type: "mitemp"
+  ATC_28AB2C:
+    tags: "location=borovo,room=detska"
+    type: "mitemp"
+  ATC_D0A4F6:
+    tags: "location=borovo,room=navun"
+    type: "mitemp"
+  ATC_F8976D:
+    tags: "location=borovo,room=kabinet"
+    type: "mitemp"
+  ATC_CB7647:
+    tags: "location=borovo,room=parno_detska"
+    type: "mitemp"
